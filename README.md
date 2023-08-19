@@ -1,15 +1,23 @@
-# Django ORM Cheatsheet
+# Django ORM Примеры запросов и возможности
 
-If you wanted to read a lot of text you'd be reading the Django docs, especially these pages:
+## Перевод статьи
+
+Оригинал
+
+```python
+git@github.com:Jdsleppy/django-orm-cheatsheet.git
+```
+
+Если бы вы хотели прочитать много текста, вы бы читали документацию по Django, особенно эти страницы:
 
 - [Queryset API (select_related, bulk_update, etc.)](https://docs.djangoproject.com/en/dev/ref/models/querysets/)
 - [Query Expressions (Subquery, F, annotate, aggregate, etc.)](https://docs.djangoproject.com/en/dev/ref/models/expressions/)
 - [Aggregation](https://docs.djangoproject.com/en/dev/topics/db/aggregation/)
 - [Database Functions](https://docs.djangoproject.com/en/dev/ref/models/database-functions/)
 
-But you don't want that, so you're here. I'll get to the point.
+Но вы этого не хотите, поэтому вы здесь. Я перейду к делу.
 
-# Our models
+# Модели для примеров
 
 ```python
 from datetime import date
@@ -63,9 +71,9 @@ Entry.objects.all()
 # ]
 ```
 
-# Make fewer queries
+# Делайте меньше запросов
 
-These are the biggest bang for your buck. Use them often.
+Это самый выгодный вариант. Используйте их чаще.
 
 ## `select_related()`
 
@@ -77,7 +85,7 @@ These are the biggest bang for your buck. Use them often.
 entry = Entry.objects.first()
 # SELECT ... FROM "blog_entry" ...;
 
-# this attribute access runs a second query
+# при доступе к этому атрибуту выполняется второй запрос
 blog = entry.blog
 # SELECT ... FROM "blog_blog" WHERE ...;
 ```
@@ -91,7 +99,7 @@ entry = Entry.objects.select_related("blog").first()
 # INNER JOIN "blog_blog" ...;
 
 blog = entry.blog
-# no query is run because we JOINed with the blog table above
+# запрос не выполняется, поскольку мы объединились с таблицей blog выше
 ```
 
 ## `prefetch_related()`
@@ -104,7 +112,7 @@ blog = entry.blog
 entry = Entry.objects.first()
 # SELECT ... FROM "blog_entry" ...;
 
-# this related query hits the database again
+# этот связанный запрос снова попадает в базу данных
 authors = list(entry.authors.all())
 # SELECT ...
 # FROM "blog_author" INNER JOIN "blog_entry_authors"...
@@ -121,8 +129,8 @@ entry = Entry.objects.prefetch_related("authors").first()
 # WHERE "blog_entry_authors"."entry_id" IN (4137);
 
 authors = list(entry.authors.all())
-# no query is run because we have an in-memory
-# lookup of the relevant authors from above
+# запрос не выполняется, так как у нас есть in-memory
+# поиск соответствующих авторов, указанных выше
 ```
 
 ## `update()`
@@ -138,13 +146,13 @@ david = (
 # SELECT ... FROM "blog_author" WHERE "blog_author"."name" LIKE 'David%' ...;
 # SELECT ... FROM "blog_entry" INNER JOIN "blog_entry_authors" ...;
 
-# There are many ineffcient ways to update all of David's entries.
-# This is one of them.
+# Существует множество неэффективных способов обновления всех записей Дэвида.
+# Это один из них.
 for entry in david.entry_set.all():
     entry.rating = 5
     entry.save()
-# One query for each Entry. Even if we used bulk_update(),
-# we're still making more queries than we need.
+# Один запрос для каждой записи. Даже если мы используем bulk_update(),
+# мы все равно делаем больше запросов, чем нам нужно.
 ```
 
 ### with `update()`
@@ -154,20 +162,20 @@ Entry.objects.filter(authors__name__startswith="David").update(rating=5)
 # UPDATE "blog_entry" SET "rating" = 5 WHERE "blog_entry"."id" IN ...;
 ```
 
-# Query things other than columns, AKA do your work in the DB, not in Python
+# Запрашивать не только колонки, но и другие объекты, т.е. работать в БД, а не в Python
 
-## `annotate()` (first look)
+## `annotate()` (первый взгляд)
 
-`annotate()` adds an attribute to each row of the result. Use this with `F()` to add one field from a related object (this makes more sense when you have objects separated by a long chain of relations).
+`annotate()` добавляет атрибут в каждую строку результата. Используйте эту функцию вместе с `F()` для добавления одного поля из связанного объекта (это имеет смысл, когда объекты разделены длинной цепочкой связей).
 
-`annotate()` is very powerful and makes sense to use in many situations, so just bear with this first unrealistic example.
+`annotate()` является очень мощным и имеет смысл использовать во многих ситуациях, поэтому просто потерпите этот первый нереалистичный пример.
 
 ```python
 entries = Entry.objects.annotate(blog_name=F("blog__name"))[:5]
 # SELECT "blog_entry"."id", ... "blog_blog"."name" AS "blog_name"
 # FROM "blog_entry" INNER JOIN "blog_blog" ...;
 
-# Now we have Entry objects with one extra attribute: blog_name
+# Теперь у нас есть объекты Entry с одним дополнительным атрибутом: blog_name
 [entry.blog_name for entry in entries]
 # ['Hunter-Rhodes',
 #  'Mcneil PLC',
@@ -178,7 +186,7 @@ entries = Entry.objects.annotate(blog_name=F("blog__name"))[:5]
 
 ## `filter()` and `Q()`
 
-Use `Q()` to do more filtering in the database, and less in your application.
+Используйте `Q()`, чтобы больше фильтровать в базе данных и меньше в приложении.
 
 ```python
 low_engagement_posts = Entry.objects.filter(
@@ -192,7 +200,7 @@ list(low_engagement_posts)
 #   "blog_entry"."number_of_pingbacks" < 20);
 ```
 
-## Query Expressions
+## Query запросы
 
 Many parts of the Django ORM expect a [query expression](https://docs.djangoproject.com/en/dev/ref/models/expressions/). Query expressions include:
 
@@ -202,7 +210,7 @@ Many parts of the Django ORM expect a [query expression](https://docs.djangoproj
 
 ### `F()`
 
-The classic example is an increment, but recall that `F()` can be used anywhere a query expression is required.
+Классическим примером является инкремент, но напомним, что `F()` может использоваться везде, где требуется выражение запроса.
 
 ```python
 Entry.objects.filter(authors__name__startswith="David").first().rating
@@ -222,7 +230,7 @@ Entry.objects.filter(authors__name__startswith="David").first().rating
 
 [Django docs page](https://docs.djangoproject.com/en/dev/ref/models/conditional-expressions/)
 
-`Value()` below is a query expression for a string, integer, bool, etc. literal value. You could use `F()` or another expression as the `then` value or even in place of the `rating=` condition.
+`Value()` Ниже приведено выражение запроса для строкового, целого, bool и т.д. литерального значения. В качестве значения `then` или даже вместо условия `rating=` можно использовать `F()` или другое выражение.
 
 ```python
 entries = Entry.objects.annotate(
@@ -250,9 +258,9 @@ entries = Entry.objects.annotate(
 
 ### `Subquery()` and `OuterRef()`
 
-Annotate each blog with the headline of the most recent entry.
+Аннотируйте каждый блог заголовком самой последней записи.
 
-This pattern is the only use for `Subquery()` I have ever found: query a \*-to-many relation, `OuterRef("pk")` to "join" the rows, use `values()` to return one column and `[:1]` to return one row from the subquery. This is basically a copy of the example in the Django docs.
+Этот паттерн - единственное применение `Subquery()`, которое мне удалось найти: запрос отношения \*-ко-многим, `OuterRef("pk")` для "объединения" строк, использование `values()` для возврата одного столбца и `[:1]` для возврата одной строки из подзапроса. Это практически копия примера из документации Django.
 
 ```python
 blogs = Blog.objects.annotate(
@@ -296,7 +304,7 @@ blogs = Blog.objects.annotate(
 
 ## `values()` (part 1)
 
-Select the specified fields only, as dictionaries. You can also select annotations, like this:
+Выберите только указанные поля, как словари. Можно также выбрать аннотации, например, так:
 
 ```python
 Entry.objects.annotate(num_authors=Count("authors")).values(
@@ -316,7 +324,7 @@ Entry.objects.annotate(num_authors=Count("authors")).values(
 
 ## `exists()`
 
-If you need a yes/no answer that something exists, this is faster than fetching the whole row.
+Если вам нужен ответ "да/нет", что что-то существует, это быстрее, чем получение всей строки.
 
 ```python
 unrealistic_data_exists = Entry.objects.filter(
@@ -334,7 +342,7 @@ unrealistic_data_exists
 
 ## `only()`
 
-Like `values()`, but you get a model instance back instead of a dictionary. Be warned, though: you will make an extra DB query if you access any of the fields you didn't fetch originally.
+Аналогично `values()`, но вместо словаря вы получаете экземпляр модели. Однако следует иметь в виду, что при обращении к полям, которые не были получены изначально, будет выполнен дополнительный запрос к БД.
 
 # Grouping data
 
@@ -342,11 +350,7 @@ Like `values()`, but you get a model instance back instead of a dictionary. Be w
 
 The Django docs contain [this hidden gem](https://docs.djangoproject.com/en/dev/topics/db/aggregation/#values):
 
-> "Ordinarily, annotations are generated on a per-object basis - an annotated QuerySet will return one result for each object in the original QuerySet. However, when a `values()` clause is used to constrain the columns that are returned in the result set... the original results are grouped according to the unique combinations of the fields specified in the `values()` clause. An annotation is then provided for each unique group; the annotation is computed over all members of the group."
-
-The word "group" is in there because this is how you make a `GROUP BY` clause with Django's ORM. Very useful for reports.
-
-Which day has the highest average blog entry rating?
+> "Обычно аннотации генерируются по каждому объекту - аннотированный QuerySet возвращает по одному результату для каждого объекта исходного QuerySet. Однако, когда для ограничения столбцов, возвращаемых в наборе результатов, используется предложение `values()`, исходные результаты группируются в соответствии с уникальными комбинациями полей, указанных в предложении `values()`. Затем для каждой уникальной группы выдается аннотация; аннотация вычисляется по всем членам группы".
 
 ```python
 [
@@ -374,4 +378,4 @@ Which day has the highest average blog entry rating?
 
 ## `aggregate()`
 
-Like `annotate()`, but instead of adding a value for each row it reduces the query to a single row.
+Подобно `annotate()`, но вместо добавления значения для каждой строки он сводит запрос к одной строке.
